@@ -1,0 +1,130 @@
+单个参数(Java中的字符串、基本数据类型/基本类型的包装类型)：
+    mybatis不会做特殊处理
+    使用 #{参数名} 取出参数
+多个参数:
+    mybatis遇见多个参数时会做特殊处理，多个参数会被封装成一个map
+    key:   param1...paramN
+    value: 传入的参数值
+
+    mapper接口：
+    public List<Employee> selectByGenderAndName(String gender,String name);
+
+    xml:
+    <select id="selectByGenderAndName" resultType="org.simple.mybatis.entity.Employee">
+            select id,name,gender,email from employee where gender =#{gender} and name like concat('%',#{name},'%')
+    </select>
+    运行结果: org.apache.ibatis.binding.BindingException: Parameter 'gender' not found. Available parameters are [arg1, arg0, param1, param2]
+    在xml中做如下修改：
+    select id,name,gender,email from employee where gender =#{arg0} and name like concat('%',#{arg1},'%')
+    或者
+    select id,name,gender,email from employee where gender =#{param1} and name like concat('%',#{param2},'%')
+
+多个参数的情况下,如果需要使用命名参数进行取值，可以在mapper中使用@Param注解标注参数,然后在xml文件中直接使用命名参数即可。
+    mapper接口：
+        public List<Employee> selectByGenderAndName(@Param("gender")String gender,@Param("name")String name);
+    xml文件：
+        <select id="selectByGenderAndName" resultType="org.simple.mybatis.entity.Employee">
+                 select id,name,gender,email from employee where gender =#{gender} and name like concat('%',#{name},'%')
+        </select>
+
+POJO:
+如果多个参数正好是我们业务逻辑中的数据模型(一般指JavaBean),可直接传入这个JavaBean
+取出参数值: #{属性名}
+    public void insert(Employee employee);
+
+    <insert id="insert">
+           insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
+    </insert>
+
+
+如果多个参数不是业务数据模型中的数据,也可直接掺入一个Map(不推荐使用),若果多个参数经常需要被使用，可以专门编写一个DTO对象(数据传输对象)
+
+推荐在mapper接口中定义方法时，都使用@Param注解表明参数名称，方便在xml映射文件中取出参数。
+
+如在mapper接口中有如下方法定义：
+    public Employee setectByIdAndName(@Param("id")String id,String name);
+    参数的取值方式为:
+    id: #{id}
+    name: #{param2}
+
+    public List<Employee> pageQuery(long current,long size,Employee employee);
+    current: #{param1/arg0}
+    size: #{param2/arg1}
+    employee: #{param3/arg2}
+    如果需要取出employee中的name：#{param3.name/arg2.name}
+
+    上面两种虽然程序能正确运行，但程序让人费解，容易出错。
+
+    public List<Employee> pageQuery(@Param("current")long current,@Param("size")long size,@Param("employee")Employee employee);
+    current: #{current}
+    size: #{size}
+    employee: #{employee}
+    如果需要取出employee中的name：#{employee.name}
+
+如果传入的参数是Collection(List/Set)或者是数组时,mybatis也会做特殊处理,也是把集合或者数组中的元素封装在map中。
+
+封装规则如下：
+    key: Collection(collection),如果是List还可以使用list,数组使用array
+    value: #{list[index]}   #{array[index]}  #{collection[index]}
+
+
+    List：
+        public List<Employee> selectListByIdList(@Param("IdList") List<String> IdList);
+
+         <select id="selectListByIdList" resultType="org.simple.mybatis.entity.Employee">
+                select * from employee where id in
+                <foreach collection="IdList" item="id" open="(" close=")" separator="," index="index">
+                    <!--根据下标获取值#{IdList[${index}]}-->
+                    #{id}
+                </foreach>
+         </select>
+
+    Array:
+        public List<Employee> selectListByIdArray(@Param("IdArray") String[] IdArray);
+
+        <select id="selectListByIdArray" resultType="org.simple.mybatis.entity.Employee" index="index">
+                select * from employee where id in
+                <foreach collection="IdArray" item="id" open="(" close=")" separator=",">
+                    <!--根据下标获取值#{IdArray[${index}]}-->
+                    #{id}
+                </foreach>
+        </select>
+
+MyBatis传参原理：
+public List<Employee> selectByGenderAndName(@Param("gender") String gender,@Param("name") String name,String test);
+使用mapper接口调用: selectByGenderAndName("男","wangzhao","test");
+MyBatis使用ParamNameResolver进行参数解析：
+    ParamNameResolver在调用构造法时会将调用的mapper方法的参数保存在names(SortedMap<Integer, String>)中
+    保存的逻辑是:
+        1. 如果参数有@Param注解,则会将该参数信息以(参数顺序,@Param注解中的参数名)存放进names中。
+        2. 如果参数没有@Param注解，且mybatis全局配置中配置了useActualParamName=true(要求JDK1.8以上编译),
+           则参数会以(参数顺序,实际参数名称)存放进names中。
+        3. 如果1和2都不满足,则会将参数信息以(参数顺序,参数顺序字符串)保存在names中。
+    如这里我们调用的方法的参数信息会被保存成这样：
+        {0="gender",1="name",2="2"}
+
+    实际获取参数的值时调用ParamNameResolver的getNamedParams(Object[] args):
+        1.如果参数为空,直接返回null。
+        2.如果只有一个参数且这个参数没有@Param注解
+            如果这个参数是Collection,会返回("collection",args[names.firstKey()])形式的ParamMap
+                如果这个参数是List,会返回("list",args[names.firstKey()])形式的ParamMap
+            如果这个参数是数组,会返回("array",args[names.firstKey()])形式的ParamMap
+           对args[names.firstKey()]做一下说明:
+           假设我们的xxxMapper中有这样一个方法:
+                public Employee selectById(String id);
+                我们调用xxxMapper.selectById("id");
+           则 ParamNameResolver 初始化后的names={0="0"}
+           那么这里ParamNameResolver方法将返回: args[names.firstKey()]=args[0]="id"
+        3.如果不满足1和2
+            则会返回一个元素为：
+                （names.value,args[names.key]）
+            并且还会添加默认的参数元素的Map
+
+            如这里将会的到这样的一个参数Map:
+                {"gender"="男","name"="wangzhao","2"="test","param1"="男","param2"="wangzhao","param3"="test"}
+
+#{}与${}取值
+#{}取值会以预编译的形式设置到SQL语句中,这种方式可以防止SQL注入。一般推荐使用这种方式进行参数的设置。
+${}取值则直接拼装在SQL语句中,这种方式会有SQL注入的安全隐患。但是SQL中有无法进行预编译占位符的情况就可以使用这种形式。
+    如 select * from ${tableName} where ...
+       select * from table where ... order by ${排序列}

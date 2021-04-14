@@ -12,10 +12,35 @@
         resultType: 返回值类型
         #{id}: 从传递过来的参数中取出id值
     -->
-    <select id="selectById" resultType="Employee">
+    <!-- 测试单个参数-->
+    <select id="selectById" resultType="org.simple.mybatis.entity.Employee">
         select id,name,gender,email from employee where id =#{id}
     </select>
 
+    <!-- 测试多个参数-->
+    <select id="selectByGenderAndName" resultType="org.simple.mybatis.entity.Employee">
+        select id,name,gender,email from employee where gender =#{gender} and name like concat('%',#{name},'%')
+    </select>
+
+    <!-- 测试集合作为参数-->
+    <select id="selectListByIdList" resultType="org.simple.mybatis.entity.Employee">
+        select * from employee where id in
+        <foreach collection="IdList" item="id" open="(" close=")" separator="," index="index">
+            <!--根据下标获取值#{IdList[${index}]}-->
+            #{id}
+        </foreach>
+    </select>
+
+    <!-- 测试集合作为参数-->
+    <select id="selectListByIdArray" resultType="org.simple.mybatis.entity.Employee">
+        select * from employee where id in
+        <foreach collection="IdArray" item="id" open="(" close=")" separator="," index="index">
+            <!--根据下标获取值#{IdArray[${index}]}-->
+            #{id}
+        </foreach>
+    </select>
+
+    <!-- 测试pojo作为参数-->
     <insert id="insert">
         insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
     </insert>
