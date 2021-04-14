@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    namespace: 名称空间，指定为接口的全类名
+-->
+<mapper namespace="org.simple.mybatis.mapper.EmployeeMapper">
+
+    <!--
+        id: 与mapper接口中的方法对应
+        resultType: 返回值类型
+        #{id}: 从传递过来的参数中取出id值
+    -->
+    <select id="selectById" resultType="Employee">
+        select id,name,gender,email from employee where id =#{id}
+    </select>
+
+    <insert id="insert">
+        insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
+    </insert>
+
+    <!--
+        获取MySQL自增主键(需要创建表时指定自增主键)：
+        mybatis需要获取自增主键的值时，需要在进行数据插入时使用如下配置：
+        useGeneratedKeys="true"    使用自增主键策略
+        keyProperty="id"           指定对应的主键属性。即将mybatis获取到的主键设置为JavaBean的哪个属性。
+
+        <insert id="insertWithGenerateKey" useGeneratedKeys="true" keyProperty="id" databaseId="mysql">
+            insert into employee(name,gender,email) values (#{name},#{gender},#{email})
+        </insert>
+
+        获取非自增主键则是使用selectKey子标签进行
+    -->
+    <insert id="insertWithGenerateKey" useGeneratedKeys="true" keyProperty="id" databaseId="mysql">
+        <selectKey keyProperty="id" resultType="string" order="BEFORE">
+            select UUID()
+        </selectKey>
+        insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
+    </insert>
+
+    <!--
+        Oracle不支持主键自增，但是Oracle使用序列来模拟自增,每次插入数据的主键是从序列中拿到值
+    -->
+    <insert id="insertWithGenerateKey" databaseId="oracle">
+        <!--
+            keyProperty:查出的主键封装给JavaBean的哪个属性
+            order: BEFORE在插入SQL语句之前执行,AFTER则是在之后执行
+                BEFORE的运行顺序(推荐使用)：
+                    先运行selectKey查询id的SQL,查出id值封装给JavaBeand的id属性
+                    再运行插入SQL,就可以取出id的值
+                AFTER的运行顺序：
+                    先运行插入的SQL(从序列中取出新值作为id)
+                    再运行selectKey查询id的SQL
+            resultType:查出的数据返回值类型
+        -->
+        <selectKey keyProperty="id" order="BEFORE" resultType="Integer">
+            select EMPLOYEE_SEQ.nextval from dual
+        </selectKey>
+        insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
+
+        <!--  AFTER插入之后获取
+        <selectKey keyProperty="id" order="AFTER" resultType="Integer">
+            select EMPLOYEE_SEQ.currentval from dual
+        </selectKey>
+        -->
+    </insert>
+
+    <update id="updateById">
+        update employee set name=#{name},gender=#{gender},email=#{email} where id =#{id}
+    </update>
+
+    <delete id="deleteById">
+        delete from employee where id =#{id}
+    </delete>
+
+</mapper>
