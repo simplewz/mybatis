@@ -8,7 +8,9 @@ import org.simple.mybatis.mapper.EmployeeMapper;
 import org.simple.mybatis.util.SqlSessionFactoryUtil;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @RunWith(JUnit4.class)
 public class EmployeeTest {
@@ -24,17 +26,31 @@ public class EmployeeTest {
             EmployeeMapper employeeMapper=sqlSession.getMapper(EmployeeMapper.class);
             //4. 使用mapper接口的动态代理对象进行业务流程的编写
 
-            /*
+
             //    4.1 测试查询
             Employee employee = employeeMapper.selectById("1");
             System.out.println(employee);
+
+            //测试返回单条记录的map
+            Map<String,Object> map=employeeMapper.selectByIdReturnMap("d25b18ad-f6ba-4077-bc71-f721673ae2b7");
+            System.out.println(map);
+
+            //测试返回多条记录的Map
+            List<String> idList=new ArrayList<>();
+            idList.add("d25b18ad-f6ba-4077-bc71-f721673ae2b7");
+            idList.add("6cda426d-9d1b-11eb-98f3-525400d5bdb");
+            idList.add("132454cf-9db0-11eb-98f3-525400d5bdb5");
+            Map<String,Employee> listMap=employeeMapper.selectByIdListReurnMap(idList);
+            System.out.println(listMap);
+
             //    测试关联查询(带部门信息)
             Employee employeeWithDept = employeeMapper.selectByIdWithDept("d25b18ad-f6ba-4077-bc71-f721673ae2b7");
             System.out.println(employeeWithDept);
-            */
 
+            /*
             List<Employee> employees=employeeMapper.selectListByDeptId(2);
             System.out.println(employees);
+            */
             /*
             //    4.2 测试新增
             Employee employee=new Employee(null,"test01","女","test01@email.com",1);

@@ -51,6 +51,30 @@
         where id =#{id}
     </select>
 
+    <!-- 单条记录返回Map{属性名1=属性1的值,属性名2=属性2的值,...}-->
+    <select id="selectByIdReturnMap" resultType="map">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        where
+            id = #{id}
+    </select>
+
+    <!-- 多条记录返回Map{主键=主键记录}-->
+    <select id="selectByIdListReurnMap" resultType="map">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        where
+            id in
+        <foreach collection="IdList" item="id" open="(" close=")" separator="," index="index">
+            <!--根据下标获取值#{IdList[${index}]}-->
+            #{id}
+        </foreach>
+    </select>
+
     <!-- 关联部门查询的结果集-->
     <resultMap id="BaseResultMapWithDept" type="org.simple.mybatis.entity.Employee">
         <id property="id" column="id"/>
@@ -83,7 +107,7 @@
             select： 嵌套的查询语句。
             ！！使用这种方式时如果是在进行列表数据的查询时，会存在数据量较大多次查询造成的性能问题,可以使用懒加载配置加快响应速度，复合的数据类型只有在使用时才会进行数据库的查询
         -->
-        <association property="department" column="d_id" javaType="org.simple.mybatis.entity.Department" select="org.simple.mybatis.mapper.DepartmentMapper.selectById" fetchType="eager"/>
+        <association property="department" column="d_id" javaType="org.simple.mybatis.entity.Department" select="org.simple.mybatis.mapper.DepartmentMapper.selectById" fetchType="lazy"/>
     </resultMap>
 
     <!-- 关联部门信息查询-->

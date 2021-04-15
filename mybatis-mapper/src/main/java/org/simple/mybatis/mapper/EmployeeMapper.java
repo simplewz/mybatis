@@ -1,10 +1,12 @@
 package org.simple.mybatis.mapper;
 
+import org.apache.ibatis.annotations.MapKey;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 import org.simple.mybatis.entity.Employee;
 
 import java.util.List;
+import java.util.Map;
 
 public interface EmployeeMapper {
 
@@ -12,6 +14,14 @@ public interface EmployeeMapper {
     //java.lang.IllegalArgumentException: Mapped Statements collection already contains value for org.simple.mybatis.mapper.EmployeeMapper.selectById. please check org/simple/mybatis/mapper/EmployeeMapper.xml and org/simple/mybatis/mapper/EmployeeMapper.java (best guess)
     //@Select("select * from employee where id = #{id}")
     public Employee selectById(@Param("id") String id);
+
+    //单条记录返回Map
+    public Map<String,Object> selectByIdReturnMap(@Param("id") String id);
+
+    //多条记录返回Map,map的key是记录的主键,value是对应的Employee
+    //@MapKey("id")注解标注使用哪个属性作为map的key
+    @MapKey("id")
+    public Map<String,Employee> selectByIdListReurnMap(@Param("IdList") List<String> IdList);
 
     //带部门信息查询(关联查询)
     public Employee selectByIdWithDept(@Param("id") String id);
