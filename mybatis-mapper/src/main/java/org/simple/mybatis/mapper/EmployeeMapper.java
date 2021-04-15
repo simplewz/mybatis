@@ -13,6 +13,9 @@ public interface EmployeeMapper {
     //@Select("select * from employee where id = #{id}")
     public Employee selectById(@Param("id") String id);
 
+    //带部门信息查询(关联查询)
+    public Employee selectByIdWithDept(@Param("id") String id);
+
     //演示传入多个参数
     public List<Employee> selectByGenderAndName(@Param("gender") String gender,@Param("name") String name);
 
@@ -21,6 +24,9 @@ public interface EmployeeMapper {
 
     //演示传入数组参数
     public List<Employee> selectListByIdArray(@Param("IdArray") String[] IdArray);
+
+    //根据部门id查询
+    public List<Employee> selectListByDeptId(@Param("deptId") Integer deptId);
 
     /**
      * mybatis允许增删改操作直接定义以下类型的返回值:

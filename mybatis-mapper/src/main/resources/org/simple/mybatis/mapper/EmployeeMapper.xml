@@ -7,19 +7,108 @@
 -->
 <mapper namespace="org.simple.mybatis.mapper.EmployeeMapper">
 
+    <!-- 基本查询映射结果-->
+    <resultMap id="BaseResultMap" type="org.simple.mybatis.entity.Employee">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="email" column="email"/>
+        <result property="dId" column="d_id"/>
+    </resultMap>
+
+    <!-- 基本查询映射结果(使用构造方法)-->
+    <resultMap id="BaseConstructorResultMap" type="org.simple.mybatis.entity.Employee">
+        <constructor>
+            <idArg javaType="String" column="id" name="id"/>
+            <arg javaType="String" column="name" name="name"/>
+            <arg javaType="String" column="gender" name="gender"/>
+            <arg javaType="String" column="email>" name="email"/>
+            <arg javaType="int" column="d_id" name="dId"/>
+        </constructor>
+    </resultMap>
+
+    <!-- 通用查询结果列-->
+    <sql id="BaseColumn">
+        id,name,gender,email,d_id
+    </sql>
+
+    <!-- 关联部门通用查询结果数据库列-->
+    <sql id="BaseColumnWithDept">
+        employee.id,employee.name,employee.gender,employee.email,employee.d_id,dept.id as deptId,dept.departmentName
+    </sql>
+
     <!--
         id: 与mapper接口中的方法对应
         resultType: 返回值类型
         #{id}: 从传递过来的参数中取出id值
     -->
     <!-- 测试单个参数-->
-    <select id="selectById" resultType="org.simple.mybatis.entity.Employee">
-        select id,name,gender,email from employee where id =#{id}
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        where id =#{id}
+    </select>
+
+    <!-- 关联部门查询的结果集-->
+    <resultMap id="BaseResultMapWithDept" type="org.simple.mybatis.entity.Employee">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="email" column="email"/>
+        <result property="dId" column="d_id"/>
+        <!--
+            (1) 关联查询：连表查询时一并查出关联对象的属性值,使用级联映射来处理连接结果的重复子集
+        -->
+        <!--
+        <result property="department.id" column="deptId"/>
+        <result property="department.departmentName" column="departmentName"/>
+        -->
+        <!--
+            (2) 嵌套结果映射：连表查询出关联对象的结果集，使用嵌套结果映射来处理连接结果的重复子集
+        -->
+        <!--
+             部门的id与员工的id列重复，mybatis会在封装结果集时出错，所以这里我们为关联的部门的id起一个别名deptId
+        <association property="department" javaType="org.simple.mybatis.entity.Department">
+            <id property="id" column="deptId"/>
+            <result property="departmentName" column="departmentName"/>
+        </association>
+        -->
+        <!--
+            (3) 嵌套SELECT查询：通过执行另外一个 SQL 映射语句来加载期望的复杂类型
+            property: 复杂类型的属性
+            column: 传入嵌套的SQL语句的列
+            javaType：指定复合类型的Java类。
+            select： 嵌套的查询语句。
+            ！！使用这种方式时如果是在进行列表数据的查询时，会存在数据量较大多次查询造成的性能问题,可以使用懒加载配置加快响应速度，复合的数据类型只有在使用时才会进行数据库的查询
+        -->
+        <association property="department" column="d_id" javaType="org.simple.mybatis.entity.Department" select="org.simple.mybatis.mapper.DepartmentMapper.selectById" fetchType="eager"/>
+    </resultMap>
+
+    <!-- 关联部门信息查询-->
+    <select id="selectByIdWithDept" resultMap="BaseResultMapWithDept">
+        <!-- (1) (2) 复合数据类型查询
+        select
+            employee.id,employee.name,employee.gender,employee.email,employee.d_id,dept.id as deptId,dept.departmentName
+        from
+            employee employee,department dept
+        where
+            employee.d_id = dept.id
+            and
+            employee.id = #{id}
+         -->
+        <!-- (3) 嵌套Select查询复杂类型数据 -->
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        where id =#{id}
     </select>
 
     <!-- 测试多个参数-->
     <select id="selectByGenderAndName" resultType="org.simple.mybatis.entity.Employee">
-        select id,name,gender,email from employee where gender =#{gender} and name like concat('%',#{name},'%')
+        select id,name,gender,email,d_id from employee where gender =#{gender} and name like concat('%',#{name},'%')
     </select>
 
     <!-- 测试集合作为参数-->
@@ -40,9 +129,19 @@
         </foreach>
     </select>
 
+    <!-- 根据部门Id查询员工列表-->
+    <select id="selectListByDeptId" resultType="org.simple.mybatis.entity.Employee">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        where
+            d_id = #{deptId}
+    </select>
+
     <!-- 测试pojo作为参数-->
     <insert id="insert">
-        insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
+        insert into employee(id,name,gender,email,d_id) values (#{id},#{name},#{gender},#{email},#{dId})
     </insert>
 
     <!--
@@ -61,7 +160,7 @@
         <selectKey keyProperty="id" resultType="string" order="BEFORE">
             select UUID()
         </selectKey>
-        insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
+        insert into employee(id,name,gender,email,d_id) values (#{id},#{name},#{gender},#{email},#{dId})
     </insert>
 
     <!--
@@ -82,7 +181,7 @@
         <selectKey keyProperty="id" order="BEFORE" resultType="Integer">
             select EMPLOYEE_SEQ.nextval from dual
         </selectKey>
-        insert into employee(id,name,gender,email) values (#{id},#{name},#{gender},#{email})
+        insert into employee(id,name,gender,email,d_id) values (#{id},#{name},#{gender},#{email},#{dId})
 
         <!--  AFTER插入之后获取
         <selectKey keyProperty="id" order="AFTER" resultType="Integer">
@@ -92,7 +191,7 @@
     </insert>
 
     <update id="updateById">
-        update employee set name=#{name},gender=#{gender},email=#{email} where id =#{id}
+        update employee set name=#{name},gender=#{gender},email=#{email},d_id=#{dId} where id =#{id}
     </update>
 
     <delete id="deleteById">
