@@ -128,3 +128,17 @@ MyBatis使用ParamNameResolver进行参数解析：
 ${}取值则直接拼装在SQL语句中,这种方式会有SQL注入的安全隐患。但是SQL中有无法进行预编译占位符的情况就可以使用这种形式。
     如 select * from ${tableName} where ...
        select * from table where ... order by ${排序列}
+
+#{}:方式取值的用法
+javaType: 参数的Java类型
+jdbcType: 参数的数据库类型。通常在数据为null时,有些数据库不支持会进行报错,如ORACLE数据库。mybatis默认null类型jdbcType设置为OTHER,这时需要手动进行设置为NULL即可。
+mode: 存储过程时进行设置
+numericScale: 参数为数字是的精度
+resultMap: 返回结果集
+typeHandler: 参数处理器
+jdbcTypeName: jdbcTypeName
+expression: mybatis未来准备引用表达式
+
+jdbcType通常在数据为null时,有些数据库不支持会进行报错,如ORACLE数据库。
+mybatis默认null类型jdbcType设置为OTHER,这时需要手动进行设置为NULL即可,或者在mybatis的全局配置文件中使用如下配置将jdbcTypeForNull的配置由OTHER改为NULL
+<setting name="jdbcTypeForNull" value="NULL"/>
