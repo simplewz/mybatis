@@ -7,13 +7,26 @@
 -->
 <mapper namespace="org.simple.mybatis.mapper.EmployeeMapper">
 
+    <!--
+        resultMap
+        自定义某个JavaBean的封装规则
+        type:自定义JavaBean的Java类
+        id: 唯一id,方便引用
+    -->
     <!-- 基本查询映射结果-->
     <resultMap id="BaseResultMap" type="org.simple.mybatis.entity.Employee">
+        <!-- id指定主键列的封装规则,主键封装mybatis会有优化规则-->
         <id property="id" column="id"/>
+        <!--
+            result指定javaBean和数据库查询列的封装规则
+            property: JavaBean的属性
+            column: 数据库查询列
+        -->
         <result property="name" column="name"/>
         <result property="gender" column="gender"/>
         <result property="email" column="email"/>
         <result property="dId" column="d_id"/>
+        <!-- 其他不指定的列与属性则按照mybatis的默认封装规则(属性名与列名一致会进行成功封装)进行-->
     </resultMap>
 
     <!-- 基本查询映射结果(使用构造方法)-->
