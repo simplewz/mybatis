@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="org.simple.mybatis.mapper.DepartmentMapper">
+
+    <resultMap id="BaseResultMap" type="org.simple.mybatis.entity.Department">
+        <id property="id" column="id"/>
+        <result property="departmentName" column="departmentName"/>
+    </resultMap>
+
+    <resultMap id="EmployeeResultMap" type="org.simple.mybatis.entity.Employee">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="email" column="email"/>
+        <result property="dId" column="d_id"/>
+    </resultMap>
+
+    <resultMap id="BaseResultMapWithEmployeeList" type="org.simple.mybatis.entity.Department">
+        <id property="id" column="id"/>
+        <result property="departmentName" column="departmentName"/>
+        <!--
+            (1) 嵌套SELECT查询集合元素
+        -->
+        <!--
+        <collection property="employeeList"  column="id" javaType="ArrayList" ofType="org.simple.mybatis.entity.Employee" select="org.simple.mybatis.mapper.EmployeeMapper.selectListByDeptId"/>
+        -->
+        <!--
+            (2) 集合的嵌套结果映射
+        <collection property="employeeList" ofType="org.simple.mybatis.entity.Employee">
+            <id property="id" column="employee_id"/>
+            <result property="name" column="employee_name"/>
+            <result property="gender" column="employee_gender"/>
+            <result property="email" column="employee_email"/>
+            <result property="dId" column="employee_d_id"/>
+        </collection>
+        -->
+        <collection property="employeeList" ofType="org.simple.mybatis.entity.Employee" resultMap="EmployeeResultMap" columnPrefix="employee_"/>
+    </resultMap>
+    
+    <sql id="Base_Column_List">
+        id,departmentName
+    </sql>
+    
+    <select id="selectById" resultType="org.simple.mybatis.entity.Department">
+        select id,departmentName from department where id=#{id}
+    </select>
+    
+    <select id="selectByIdWithEmployeeList" resultMap="BaseResultMapWithEmployeeList">
+        <!-- (1) 嵌套SELECT查询集合元素
+        select
+            <include refid="Base_Column_List"/>
+        from
+            department
+        where
+            id =#{id}
+        -->
+        <!--
+            (2) 集合的嵌套结果映射
+        -->
+        select
+            dept.id,
+            dept.departmentName,
+            employee.id as employee_id,
+            employee.name as employee_name,
+            employee.gender as employee_gender,
+            employee.email as employee_email,
+            employee.d_id as employee_d_id
+        from
+            department dept
+        left JOIN
+            employee employee
+        on
+            employee.d_id=dept.id
+        WHERE
+            dept.id=#{id}
+    </select>
+
+</mapper>

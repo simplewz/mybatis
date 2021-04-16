@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    namespace: 名称空间，指定为接口的全类名
+-->
+<mapper namespace="org.simple.mybatis.mapper.EmployeeMapper">
+
+    <!--
+        resultMap
+        自定义某个JavaBean的封装规则
+        type:自定义JavaBean的Java类
+        id: 唯一id,方便引用
+    -->
+    <!-- 基本查询映射结果-->
+    <resultMap id="BaseResultMap" type="org.simple.mybatis.entity.Employee">
+        <!-- id指定主键列的封装规则,主键封装mybatis会有优化规则-->
+        <id property="id" column="id"/>
+        <!--
+            result指定javaBean和数据库查询列的封装规则
+            property: JavaBean的属性
+            column: 数据库查询列
+        -->
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="email" column="email"/>
+        <result property="dId" column="d_id"/>
+        <!-- 其他不指定的列与属性则按照mybatis的默认封装规则(属性名与列名一致会进行成功封装)进行-->
+    </resultMap>
+
+    <!-- 关联部门查询的结果集-->
+    <resultMap id="BaseResultMapWithDept" type="org.simple.mybatis.entity.Employee">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="email" column="email"/>
+        <result property="dId" column="d_id"/>
+        <!--
+            (1) 关联查询：连表查询时一并查出关联对象的属性值,使用级联映射来处理连接结果的重复子集
+        -->
+        <!--
+        <result property="department.id" column="deptId"/>
+        <result property="department.departmentName" column="departmentName"/>
+        -->
+        <!--
+            (2) 嵌套结果映射：连表查询出关联对象的结果集，使用嵌套结果映射来处理连接结果的重复子集
+        -->
+
+        <!--部门的id与员工的id列重复，mybatis会在封装结果集时出错，所以这里我们为关联的部门的id起一个别名deptId-->
+        <association property="department" javaType="org.simple.mybatis.entity.Department">
+            <id property="id" column="deptId"/>
+            <result property="departmentName" column="departmentName"/>
+        </association>
+
+        <!--
+            (3) 嵌套SELECT查询：通过执行另外一个 SQL 映射语句来加载期望的复杂类型
+            property: 复杂类型的属性
+            column: 传入嵌套的SQL语句的列
+            javaType：指定复合类型的Java类。
+            select： 嵌套的查询语句。
+            ！！使用这种方式时如果是在进行列表数据的查询时，会存在数据量较大多次查询造成的性能问题,可以使用懒加载配置加快响应速度，复合的数据类型只有在使用时才会进行数据库的查询
+        -->
+        <!--
+        <association property="department" column="d_id" javaType="org.simple.mybatis.entity.Department" select="org.simple.mybatis.mapper.DepartmentMapper.selectById" fetchType="lazy"/>
+        -->
+    </resultMap>
+
+    <!-- 通用查询结果列-->
+    <sql id="BaseColumn">
+        id,name,gender,email,d_id
+    </sql>
+
+    <!-- 关联部门通用查询结果数据库列-->
+    <sql id="BaseColumnWithDept">
+        employee.id,employee.name,employee.gender,employee.email,employee.d_id,dept.id as deptId,dept.departmentName
+    </sql>
+
+    <sql id="InsertBaseColumn">
+        (<include refid="BaseColumn"/>)
+    </sql>
+
+    <!--
+        if标签条件判断用于构造动态条件,通常用于构造SQL语句中的where后面的部分,与where标签结合使用mybatis会自动对where里面的条件进行封装。
+        如：这里我们的第一个if条件不满足而第二个条件满足时,这时构造的SQL语句如下
+            select id,name,gender,email,d_id from employee where or email like concat('%',#{email},'%')
+            此时动态构造出的SQL语句存在语法错误。如果将条件放在where标签中时,mybatis会对我们的SQL语句进行封装,封装后的SQL语句如下：
+            select id,name,gender,email,d_id from employee where email like concat('%',#{email},'%')
+
+            即where标签与if标签标签结合使用mybatis会对我们的语句进行智能检查,减少开发者拼装SQL的错误
+    -->
+    <select id="selectByNameOrEmail" resultMap="BaseResultMap">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        <where>
+            <if test="name!=null and name!=''">
+                name like concat('%',#{name},'%')
+            </if>
+            <if test="email!=null and email!=''">
+                or email like concat('%',#{email},'%')
+            </if>
+        </where>
+    </select>
+
+    <!--
+        foreach标签进行批量添加
+        mysql批量添加语法规则如下：
+        insert into table(column1,column2,column3,...,columnN) values
+        (column1Value,column2Value,column3Value,...,columnNValue),
+        (column1Value,column2Value,column3Value,...,columnNValue),
+        (column1Value,column2Value,column3Value,...,columnNValue),
+        ......
+        (column1Value,column2Value,column3Value,...,columnNValue)
+        注意点：
+           (1)插入的表后面的括号中的列要与后面的values中的插入值对应起来。
+           (2)values之间的记录要用逗号分隔，所以这里在foreach标签中用separator=","属性进行设置
+
+        oracle不支持mysql上述的批量添加语法,如需要使用批量添加操作，则需要为每一条记录生成一条插入语句
+
+    -->
+    <insert id="batchInsert">
+        <if test="employeeList!=null and employeeList.size>0">
+            insert into employee<include refid="InsertBaseColumn"/> values
+            <foreach collection="employeeList" item="employee" separator=",">
+                (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+            </foreach>
+        </if>
+    </insert>
+
+    <!--
+        set标签与if标签结合使用用于修改需要修改的列,对于null值则不进行修改.
+    -->
+    <update id="updateById">
+        update
+            employee
+        <set>
+            <if test="employee.name!=null">
+                name = #{employee.name},
+            </if>
+            <if test="employee.gender!=null">
+                gender =#{employee.gender},
+            </if>
+            <if test="employee.email!=null">
+                email =#{employee.email},
+            </if>
+            <if test="employee.dId!=null">
+                d_id =#{employee.dId}
+            </if>
+        </set>
+        where
+          id = #{employee.id}
+
+    </update>
+
+</mapper>
