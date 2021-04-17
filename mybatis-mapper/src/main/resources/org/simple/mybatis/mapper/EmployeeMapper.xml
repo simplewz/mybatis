@@ -166,6 +166,23 @@
         </foreach>
     </select>
 
+    <!-- 测试mybatis的两个内置参数的使用-->
+    <select id="selectListByInnerParam" resultType="org.simple.mybatis.entity.Employee">
+        <if test="_databaseId=='mysql'">
+            select * from employee
+            <if test="_parameter!=null">
+                <where>
+                    <if test="_parameter.name!=null and _parameter.name!=''">
+                        name like concat('%',#{_parameter.name},'%')
+                    </if>
+                    <if test="_parameter.email!=null and _parameter.email!=''">
+                        or email like concat('%',#{_parameter.email},'%')
+                    </if>
+                </where>
+            </if>
+        </if>
+    </select>
+
     <!-- 根据部门Id查询员工列表-->
     <select id="selectListByDeptId" resultType="org.simple.mybatis.entity.Employee">
         select

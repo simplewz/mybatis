@@ -35,6 +35,9 @@ public interface EmployeeMapper {
     //演示传入数组参数
     public List<Employee> selectListByIdArray(@Param("IdArray") String[] IdArray);
 
+    //演示使用mybatis的两个内置参数进行查询
+    public List<Employee> selectListByInnerParam(Employee employee);
+
     //根据部门id查询
     public List<Employee> selectListByDeptId(@Param("deptId") Integer deptId);
 

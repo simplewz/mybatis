@@ -26,7 +26,7 @@ public class EmployeeTest {
             EmployeeMapper employeeMapper=sqlSession.getMapper(EmployeeMapper.class);
             //4. 使用mapper接口的动态代理对象进行业务流程的编写
 
-
+            /*
             //    4.1 测试查询
             Employee employee = employeeMapper.selectById("1");
             System.out.println(employee);
@@ -42,11 +42,13 @@ public class EmployeeTest {
             idList.add("132454cf-9db0-11eb-98f3-525400d5bdb5");
             Map<String,Employee> listMap=employeeMapper.selectByIdListReurnMap(idList);
             System.out.println(listMap);
+            */
 
+            /*
             //    测试关联查询(带部门信息)
             Employee employeeWithDept = employeeMapper.selectByIdWithDept("d25b18ad-f6ba-4077-bc71-f721673ae2b7");
             System.out.println(employeeWithDept);
-
+            */
             /*
             List<Employee> employees=employeeMapper.selectListByDeptId(2);
             System.out.println(employees);
@@ -57,16 +59,21 @@ public class EmployeeTest {
             employeeMapper.insertWithGenerateKey(employee);
             System.out.println(employee);
             */
+
             /*
             //    4.3 测试修改
-            Employee employee=new Employee("d25b18ad-f6ba-4077-bc71-f721673ae2b7","wangzhaojun","女","wangzhaojun@email.com");
+            Employee employee=new Employee("id=01754065-9cf4-11eb-98f3-525400d5bdb5","test_u","男","test@email.com",2);
             employeeMapper.updateById(employee);
             */
 
             /*
             //    4.4 测试删除
-            System.out.println(employeeMapper.deleteById("3"));
+            System.out.println(employeeMapper.deleteById("e42d2f3d-e3f5-495e-8a14-7348d81c6048"));
             */
+
+            //    4.5 测试使用mybatis的两个内置参数
+            List<Employee> employees=employeeMapper.selectListByInnerParam(new Employee(null,"test","男","wang",null));
+            System.out.println(employees);
         }finally {
             //5.关闭SqlSession
             sqlSession.close();

@@ -142,3 +142,11 @@ expression: mybatis未来准备引用表达式
 jdbcType通常在数据为null时,有些数据库不支持会进行报错,如ORACLE数据库。
 mybatis默认null类型jdbcType设置为OTHER,这时需要手动进行设置为NULL即可,或者在mybatis的全局配置文件中使用如下配置将jdbcTypeForNull的配置由OTHER改为NULL
 <setting name="jdbcTypeForNull" value="NULL"/>
+
+
+mybatis的两个内置参数:
+    _parameter: 代表mapper中的整个参数
+        如果mapper接口中只有一个参数,那么_parameter就代表这个参数。
+        如果mapper接口中有多个参数,因为多个参数会被封装成一个Map,所以_parameter就代表这个map。
+    _databaseId: 如果在mybatis的全局配置文件中配置了databaseIdProvider标签,那么_databaseId就代表当前数据库的别名。
+
