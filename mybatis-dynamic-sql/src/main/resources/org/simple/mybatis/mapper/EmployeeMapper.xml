@@ -87,7 +87,8 @@
             此时动态构造出的SQL语句存在语法错误。如果将条件放在where标签中时,mybatis会对我们的SQL语句进行封装,封装后的SQL语句如下：
             select id,name,gender,email,d_id from employee where email like concat('%',#{email},'%')
 
-            即where标签与if标签标签结合使用mybatis会对我们的语句进行智能检查,减少开发者拼装SQL的错误
+            即where标签与if标签标签结合使用mybatis会对我们的语句进行智能检查,减少开发者拼装SQL的错误。
+            这种使用方法mybatis能帮助只能去除where动态条件中前面多出的  and 和 or
     -->
     <select id="selectByNameOrEmail" resultMap="BaseResultMap">
         select
@@ -101,6 +102,69 @@
             <if test="email!=null and email!=''">
                 or email like concat('%',#{email},'%')
             </if>
+        </where>
+    </select>
+
+    <!--
+        trim 标签也能进行智能SQL封装,它既能解决where动态SQL条件S拼装前面多出的and和or问题，也能解决动态SQL条件后面多出的and和or问题。
+        trim标签的常见属性及说明：
+        prefix: 给trim标签体中拼接的动态SQL加上一个前缀
+        prefixOverrides: 前缀覆盖。去除整个动态SQL字符串前面多余的字符串。
+        suffix: 给trim标签体中拼接的动态SQL加上一个后缀。
+        suffixOverrides: 后缀覆盖。去除整个动态SQL字符串后面多余的字符串。
+    -->
+    <select id="selectList" resultMap="BaseResultMap">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        <trim prefix="where" prefixOverrides="and|or" suffixOverrides="and|or">
+            <if test="name!=null and name!=''">
+                name like concat('%',#{name},'%')
+            </if>
+            <if test="gender!=null">
+                and gender = #{gender}
+            </if>
+            <if test="email!=null and email!=''">
+                or email like concat('%',#{email},'%')
+            </if>
+        </trim>
+    </select>
+
+    <!--
+        <choose>
+            <when>
+                条件1...
+            </when>
+            <when>
+                条件2...
+            </when>
+            ...
+            <otherwise>
+                都不满足前面指定的条件时的默认处理
+            </otherwise>
+        </choose>
+    -->
+    <select id="selectByConditionChoose" resultType="org.simple.mybatis.entity.Employee">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        <where>
+            <choose>
+                <when test="employee.id!=null and employee.id!=''">
+                    id =#{employee.id}
+                </when>
+                <when test="employee.name!=null and employee.name!=''">
+                    name like concat('%',#{employee.name},'%')
+                </when>
+                <when test="employee.email!=null and employee.email!=''">
+                    email like concat('%',#{employee.email},'%')
+                </when>
+                <otherwise>
+                    1=1
+                </otherwise>
+            </choose>
         </where>
     </select>
 
@@ -119,13 +183,65 @@
 
         oracle不支持mysql上述的批量添加语法,如需要使用批量添加操作，则需要为每一条记录生成一条插入语句
 
+        foreach的属性说明：
+           collection：指定要遍历的集合或数组。
+           item: 将遍历的当前元素赋值给指定的变量。
+           separator: 每个元素之间的分隔符。
+           open: 遍历出的所有结果拼接一个开始字符串。
+           close: 遍历出的所有结果拼接一个结束字符串。
+           index: 索引。
+                遍历集合或数组时index就是集合或数组的索引,可用#{IdList[${index}]}取出索引值。
+                遍历Map时index表示的就是map的key,item就是map的值。
     -->
     <insert id="batchInsert">
         <if test="employeeList!=null and employeeList.size>0">
+            <!--
+                1. 一条insert语句批量添加多条记录
+            -->
             insert into employee<include refid="InsertBaseColumn"/> values
             <foreach collection="employeeList" item="employee" separator=",">
                 (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
             </foreach>
+
+            <!--
+                2. 构造多条记录的insert语句完成批量添加。需要在数据库的连接中添加allowMultiQueries=true表示允许一条语句中有多个语句，语句之间用;分隔
+                这种方式也可用于批量删除、批量修改
+            -->
+            <!--
+            <foreach collection="employeeList" item="employee" separator=";">
+                insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+            </foreach>
+            -->
+            <!--
+                oracle支持的批量添加方式：
+                (1) 多个insert放在begin和end之间。
+                   begin
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId});
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId});
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+                    end
+
+                    <foreach collection="employeeList" item="employee" separator=";" open="bgein" close="end;">
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+                    </foreach>
+
+                (2)利用中间表
+                    insert into employee(id,name,gender,email,d_id)
+                        select id,name,gender,email,d_id from(
+                            select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as gender,#{employee.dId} as d_id from dual
+                            union
+                            select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as gender,#{employee.dId} as d_id from dual
+                            union
+                            select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as gender,#{employee.dId} as d_id from dual
+                        )
+
+                    insert into employee(id,name,gender,email,d_id)
+                        select id,name,gender,email,d_id from(
+                            <foreach collection="employeeList" item="employee" separator="union">
+                                select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as email,#{employee.dId} as d_id from dual
+                            </foreach>
+                        )
+            -->
         </if>
     </insert>
 
@@ -151,7 +267,28 @@
         </set>
         where
           id = #{employee.id}
+    </update>
 
+    <!--
+        使用trim标签等效替换<set>标签
+    -->
+    <update id="updateByIdUseTrim">
+        update employee
+        <trim prefix="set" suffixOverrides=",">
+            <if test="employee.name!=null">
+                name = #{employee.name},
+            </if>
+            <if test="employee.gender!=null">
+                gender =#{employee.gender},
+            </if>
+            <if test="employee.email!=null">
+                email =#{employee.email},
+            </if>
+            <if test="employee.dId!=null">
+                d_id =#{employee.dId}
+            </if>
+        </trim>
+        where id =#{employee.id}
     </update>
 
 </mapper>

@@ -26,23 +26,42 @@ public class EmployeeTest {
             //3. 根据SqlSession获取Mapper对象,该Mapper对象为动态代理对象
             EmployeeMapper employeeMapper=sqlSession.getMapper(EmployeeMapper.class);
             //4. 使用mapper接口的动态代理对象进行业务流程的编写
+
             /*
             //    4.1 测试where标签与if标签结合的动态SQL
             List<Employee> employees=employeeMapper.selectByNameOrEmail("test","wang");
+             */
+
+            /*
+            //    4.2 测试trim标签
+            List<Employee> employees=employeeMapper.selectList(new Employee(null,"test","男","wang",null));
             System.out.println(employees);
             */
+
             /*
-            //   4.2 测试foreach标签动态生成SQL批量添加功能
+            //   4.3 测试choose when otherwise标签(只有一个条件会被满足)
+            List<Employee> employees=employeeMapper.selectByConditionChoose(new Employee(null,null,"男",null,null));
+            System.out.println(employees);
+             */
+
+
+            //    4.4 测试foreach标签动态生成SQL批量添加功能
             List<Employee> employeeList=new ArrayList<>();
             employeeList.add(new Employee(UUID.randomUUID().toString(),"test01","男","test01@email.com",1));
             employeeList.add(new Employee(UUID.randomUUID().toString(),"test02","女","test02@email.com",2));
             employeeList.add(new Employee(UUID.randomUUID().toString(),"test03","男","test03@email.com",3));
             System.out.println(employeeMapper.batchInsert(employeeList));
-             */
-            // 4.3 测试set标签与if标签结合动态生成需要要修改的列
+
+            /*
+            //    4.5 测试set标签与if标签结合动态生成需要要修改的列
             // Employee(id=01754065-9cf4-11eb-98f3-525400d5bdb5, name=test, gender=男, email=test@email.com, dId=2, department=null)
-            Employee employee=new Employee("id=01754065-9cf4-11eb-98f3-525400d5bdb5","test","男","test@email.com",2);
+            Employee employee=new Employee("id=01754065-9cf4-11eb-98f3-525400d5bdb5","test_u","女","test_u@email.com",1);
             System.out.println(employeeMapper.updateById(employee));
+             */
+
+            //   4.6 测试trim标签进行动态字段修改
+            Employee employee=new Employee("id=01754065-9cf4-11eb-98f3-525400d5bdb5","test_u","女","test_u@email.com",1);
+            System.out.println(employeeMapper.updateByIdUseTrim(employee));
         }finally {
             //5.关闭SqlSession
             sqlSession.close();
