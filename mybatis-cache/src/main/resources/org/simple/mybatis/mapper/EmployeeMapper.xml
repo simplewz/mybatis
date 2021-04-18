@@ -1,0 +1,331 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    namespace: 名称空间，指定为接口的全类名
+-->
+<mapper namespace="org.simple.mybatis.mapper.EmployeeMapper">
+
+    <!--
+        二级缓存配置
+        eviction: 缓存回收策略,默认配置为LRU。
+            LRU：最近最少使用，移除最长时间不被使用的对象。
+            FIFO:先进先出，按对象进入缓存的顺序来进行移除。
+            SOFT:软引用，移除基于垃圾回收器状态和软引用规则的对象。
+            WEAK:弱引用，更积极的移除 基于垃圾回收器状态和弱引用规则的对象。
+        flushInterval：缓存刷新间隔(单位:ms)，表示缓存多长时间清空一次。默认是不清空。
+        readOnly:缓存是否只读。
+            只读：所有从缓存中获取数据的操作都是只读操作，不会修改数据。MyBatis为了加快获取缓存，
+                 直接就会将数据在缓存中的引用返回个用户。不安全，但是速度快。
+            非只读：获取的数据可能被修改，mybatis会使用序列化反序列化技术克隆一份新的数据进行返回。
+            默认是非只读。
+        size:缓存存放多少数据。
+        type:缓存类型，一般使用缓存实现类的全类名。
+            如果需要使用自定义缓存，则只需要自定义一个类实现Cache接口即可。
+    -->
+    <!--
+        mybatis的原生缓存配置
+    <cache
+        eviction="LRU"
+        flushInterval="3000"
+        readOnly="true"
+        size="512"
+    />
+    -->
+
+    <cache type="org.mybatis.caches.ehcache.EhcacheCache"></cache>
+
+    <!--
+        resultMap
+        自定义某个JavaBean的封装规则
+        type:自定义JavaBean的Java类
+        id: 唯一id,方便引用
+    -->
+    <!-- 基本查询映射结果-->
+    <resultMap id="BaseResultMap" type="org.simple.mybatis.entity.Employee">
+        <!-- id指定主键列的封装规则,主键封装mybatis会有优化规则-->
+        <id property="id" column="id"/>
+        <!--
+            result指定javaBean和数据库查询列的封装规则
+            property: JavaBean的属性
+            column: 数据库查询列
+        -->
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="email" column="email"/>
+        <result property="dId" column="d_id"/>
+        <!-- 其他不指定的列与属性则按照mybatis的默认封装规则(属性名与列名一致会进行成功封装)进行-->
+    </resultMap>
+
+    <!-- 关联部门查询的结果集-->
+    <resultMap id="BaseResultMapWithDept" type="org.simple.mybatis.entity.Employee">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="gender" column="gender"/>
+        <result property="email" column="email"/>
+        <result property="dId" column="d_id"/>
+        <!--
+            (1) 关联查询：连表查询时一并查出关联对象的属性值,使用级联映射来处理连接结果的重复子集
+        -->
+        <!--
+        <result property="department.id" column="deptId"/>
+        <result property="department.departmentName" column="departmentName"/>
+        -->
+        <!--
+            (2) 嵌套结果映射：连表查询出关联对象的结果集，使用嵌套结果映射来处理连接结果的重复子集
+        -->
+
+        <!--部门的id与员工的id列重复，mybatis会在封装结果集时出错，所以这里我们为关联的部门的id起一个别名deptId-->
+        <association property="department" javaType="org.simple.mybatis.entity.Department">
+            <id property="id" column="deptId"/>
+            <result property="departmentName" column="departmentName"/>
+        </association>
+
+        <!--
+            (3) 嵌套SELECT查询：通过执行另外一个 SQL 映射语句来加载期望的复杂类型
+            property: 复杂类型的属性
+            column: 传入嵌套的SQL语句的列
+            javaType：指定复合类型的Java类。
+            select： 嵌套的查询语句。
+            ！！使用这种方式时如果是在进行列表数据的查询时，会存在数据量较大多次查询造成的性能问题,可以使用懒加载配置加快响应速度，复合的数据类型只有在使用时才会进行数据库的查询
+        -->
+        <!--
+        <association property="department" column="d_id" javaType="org.simple.mybatis.entity.Department" select="org.simple.mybatis.mapper.DepartmentMapper.selectById" fetchType="lazy"/>
+        -->
+    </resultMap>
+
+    <!-- 通用查询结果列-->
+    <sql id="BaseColumn">
+        id,name,gender,email,d_id
+    </sql>
+
+    <!-- 关联部门通用查询结果数据库列-->
+    <sql id="BaseColumnWithDept">
+        employee.id,employee.name,employee.gender,employee.email,employee.d_id,dept.id as deptId,dept.departmentName
+    </sql>
+
+    <sql id="InsertBaseColumn">
+        (<include refid="BaseColumn"/>)
+    </sql>
+
+    <select id="selectById" resultMap="BaseResultMap">
+        select
+        <include refid="BaseColumn"/>
+        from
+        employee
+        where id =#{id}
+    </select>
+
+    <!--
+        if标签条件判断用于构造动态条件,通常用于构造SQL语句中的where后面的部分,与where标签结合使用mybatis会自动对where里面的条件进行封装。
+        如：这里我们的第一个if条件不满足而第二个条件满足时,这时构造的SQL语句如下
+            select id,name,gender,email,d_id from employee where or email like concat('%',#{email},'%')
+            此时动态构造出的SQL语句存在语法错误。如果将条件放在where标签中时,mybatis会对我们的SQL语句进行封装,封装后的SQL语句如下：
+            select id,name,gender,email,d_id from employee where email like concat('%',#{email},'%')
+
+            即where标签与if标签标签结合使用mybatis会对我们的语句进行智能检查,减少开发者拼装SQL的错误。
+            这种使用方法mybatis能帮助只能去除where动态条件中前面多出的  and 和 or
+    -->
+    <select id="selectByNameOrEmail" resultMap="BaseResultMap">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        <where>
+            <if test="name!=null and name!=''">
+                name like concat('%',#{name},'%')
+            </if>
+            <if test="email!=null and email!=''">
+                or email like concat('%',#{email},'%')
+            </if>
+        </where>
+    </select>
+
+    <!--
+        trim 标签也能进行智能SQL封装,它既能解决where动态SQL条件S拼装前面多出的and和or问题，也能解决动态SQL条件后面多出的and和or问题。
+        trim标签的常见属性及说明：
+        prefix: 给trim标签体中拼接的动态SQL加上一个前缀
+        prefixOverrides: 前缀覆盖。去除整个动态SQL字符串前面多余的字符串。
+        suffix: 给trim标签体中拼接的动态SQL加上一个后缀。
+        suffixOverrides: 后缀覆盖。去除整个动态SQL字符串后面多余的字符串。
+    -->
+    <select id="selectList" resultMap="BaseResultMap">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        <trim prefix="where" prefixOverrides="and|or" suffixOverrides="and|or">
+            <if test="name!=null and name!=''">
+                name like concat('%',#{name},'%')
+            </if>
+            <if test="gender!=null">
+                and gender = #{gender}
+            </if>
+            <if test="email!=null and email!=''">
+                or email like concat('%',#{email},'%')
+            </if>
+        </trim>
+    </select>
+
+    <!--
+        <choose>
+            <when>
+                条件1...
+            </when>
+            <when>
+                条件2...
+            </when>
+            ...
+            <otherwise>
+                都不满足前面指定的条件时的默认处理
+            </otherwise>
+        </choose>
+    -->
+    <select id="selectByConditionChoose" resultType="org.simple.mybatis.entity.Employee">
+        select
+            <include refid="BaseColumn"/>
+        from
+            employee
+        <where>
+            <choose>
+                <when test="employee.id!=null and employee.id!=''">
+                    id =#{employee.id}
+                </when>
+                <when test="employee.name!=null and employee.name!=''">
+                    name like concat('%',#{employee.name},'%')
+                </when>
+                <when test="employee.email!=null and employee.email!=''">
+                    email like concat('%',#{employee.email},'%')
+                </when>
+                <otherwise>
+                    1=1
+                </otherwise>
+            </choose>
+        </where>
+    </select>
+
+    <!--
+        foreach标签进行批量添加
+        mysql批量添加语法规则如下：
+        insert into table(column1,column2,column3,...,columnN) values
+        (column1Value,column2Value,column3Value,...,columnNValue),
+        (column1Value,column2Value,column3Value,...,columnNValue),
+        (column1Value,column2Value,column3Value,...,columnNValue),
+        ......
+        (column1Value,column2Value,column3Value,...,columnNValue)
+        注意点：
+           (1)插入的表后面的括号中的列要与后面的values中的插入值对应起来。
+           (2)values之间的记录要用逗号分隔，所以这里在foreach标签中用separator=","属性进行设置
+
+        oracle不支持mysql上述的批量添加语法,如需要使用批量添加操作，则需要为每一条记录生成一条插入语句
+
+        foreach的属性说明：
+           collection：指定要遍历的集合或数组。
+           item: 将遍历的当前元素赋值给指定的变量。
+           separator: 每个元素之间的分隔符。
+           open: 遍历出的所有结果拼接一个开始字符串。
+           close: 遍历出的所有结果拼接一个结束字符串。
+           index: 索引。
+                遍历集合或数组时index就是集合或数组的索引,可用#{IdList[${index}]}取出索引值。
+                遍历Map时index表示的就是map的key,item就是map的值。
+    -->
+    <insert id="batchInsert">
+        <if test="employeeList!=null and employeeList.size>0">
+            <!--
+                1. 一条insert语句批量添加多条记录
+            -->
+            insert into employee<include refid="InsertBaseColumn"/> values
+            <foreach collection="employeeList" item="employee" separator=",">
+                (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+            </foreach>
+
+            <!--
+                2. 构造多条记录的insert语句完成批量添加。需要在数据库的连接中添加allowMultiQueries=true表示允许一条语句中有多个语句，语句之间用;分隔
+                这种方式也可用于批量删除、批量修改
+            -->
+            <!--
+            <foreach collection="employeeList" item="employee" separator=";">
+                insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+            </foreach>
+            -->
+            <!--
+                oracle支持的批量添加方式：
+                (1) 多个insert放在begin和end之间。
+                   begin
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId});
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId});
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+                    end
+
+                    <foreach collection="employeeList" item="employee" separator=";" open="bgein" close="end;">
+                        insert into employee (id,name,gender,email,d_id) values (#{employee.id},#{employee.name},#{employee.gender},#{employee.email},#{employee.dId})
+                    </foreach>
+
+                (2)利用中间表
+                    insert into employee(id,name,gender,email,d_id)
+                        select id,name,gender,email,d_id from(
+                            select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as gender,#{employee.dId} as d_id from dual
+                            union
+                            select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as gender,#{employee.dId} as d_id from dual
+                            union
+                            select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as gender,#{employee.dId} as d_id from dual
+                        )
+
+                    insert into employee(id,name,gender,email,d_id)
+                        select id,name,gender,email,d_id from(
+                            <foreach collection="employeeList" item="employee" separator="union">
+                                select employee.seq.nextval as id,#{employee.name} as name,#{employee.gender} as gender,#{employee.email} as email,#{employee.dId} as d_id from dual
+                            </foreach>
+                        )
+            -->
+        </if>
+    </insert>
+
+    <!--
+        set标签与if标签结合使用用于修改需要修改的列,对于null值则不进行修改.
+    -->
+    <update id="updateById">
+        update
+            employee
+        <set>
+            <if test="employee.name!=null">
+                name = #{employee.name},
+            </if>
+            <if test="employee.gender!=null">
+                gender =#{employee.gender},
+            </if>
+            <if test="employee.email!=null">
+                email =#{employee.email},
+            </if>
+            <if test="employee.dId!=null">
+                d_id =#{employee.dId}
+            </if>
+        </set>
+        where
+          id = #{employee.id}
+    </update>
+
+    <!--
+        使用trim标签等效替换<set>标签
+    -->
+    <update id="updateByIdUseTrim">
+        update employee
+        <trim prefix="set" suffixOverrides=",">
+            <if test="employee.name!=null">
+                name = #{employee.name},
+            </if>
+            <if test="employee.gender!=null">
+                gender =#{employee.gender},
+            </if>
+            <if test="employee.email!=null">
+                email =#{employee.email},
+            </if>
+            <if test="employee.dId!=null">
+                d_id =#{employee.dId}
+            </if>
+        </trim>
+        where id =#{employee.id}
+    </update>
+
+</mapper>

@@ -12,6 +12,8 @@
         <module>mybatis-hello</module>
         <module>mybatis-mapper</module>
         <module>mybatis-dynamic-sql</module>
+        <module>mybatis-cache</module>
+        <module>mybatis-spring</module>
     </modules>
 
     <properties>
