@@ -14,6 +14,7 @@
         <module>mybatis-dynamic-sql</module>
         <module>mybatis-cache</module>
         <module>mybatis-spring</module>
+        <module>mybatis-generator</module>
     </modules>
 
     <properties>
